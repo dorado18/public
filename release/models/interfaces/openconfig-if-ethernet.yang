@@ -125,7 +125,50 @@ module openconfig-if-ethernet {
   }
 
   // typedef statements
+  typedef pause-fc-direction-type {
+    type enumeration {
+      enum "disabled" {
+        description
+          "Flow-control disabled in both ingress and egress
+           directions, i.e., PAUSE frames are not transmitted and
+           PAUSE frames received in the ingress direction are 
+           discarded without processing.";
+      }
+      enum "ingress-only" {
+        description
+          "PAUSE frame based flow control is enabled in the ingress 
+           direction only, i.e., PAUSE frames may be transmitted to 
+           reduce the ingress traffic flow, but PAUSE frames received 
+           in the ingress direction are discarded without reducing 
+           the egress traffic rate.";
+      }
+      enum "egress-only" {
+        description
+          "PAUSE frame based flow control is enabled in the egress 
+           direction only, i.e., PAUSE frames are not transmitted, 
+           but PAUSE frames received in the ingress direction are 
+           processed to reduce the egress traffic rate.";
+      }
+      enum "bi-directional" {
+        description
+          "PAUSE frame based flow control is enabled in both ingress 
+           and egress directions, i.e., PAUSE frames may be 
+           transmitted to reduce the ingress traffic flow, and 
+           PAUSE frames received on ingress are processed to reduce 
+           the egress traffic rate.";
+      }
+      enum "undefined" {
+        description
+          "Link is currently disconnected or initializing.";
+      }
+    }
+    description
+      "Used to represent the configured, negotiated, or actual 
+       PAUSE frame-based flow control setting.";
 
+    reference
+      "IEEE Std 802.3.1, dot3PauseAdminMode and dot3PauseOperMode";
+  }
 
   // grouping statements
 
@@ -198,6 +241,159 @@ module openconfig-if-ethernet {
       reference
         "IEEE 802.3x";
     }
+// *************************************************************************
+      container flow-control {
+        description
+          "Holds the different types of Ethernet PAUSE frame based 
+           flow control that can be enabled.";
+        container pause {
+          description
+            "IEEE Std 802.3 PAUSE frame based PAUSE frame based flow
+             control.";
+          reference 
+            "IEEE Std 802.3, Annex 31B";
+          leaf direction {
+            type pause-fc-direction-type;
+            description
+              "Indicates which direction PAUSE frame based flow 
+               control is enabled in, or whether it is disabled.
+               The default flow-control settings are vendor specific.
+               If auto-negotiation is enabled, then PAUSE based
+               flow-control is negotiated by default.
+               The default value is implementation-dependent.";
+          }
+
+          container statistics {
+            config false;
+            description
+              "Contains the number of PAUSE frames received or
+               transmitted.";
+            leaf in-frames-pause {
+              type oc-yang:counter64;
+              units frames;
+              description
+                "A count of PAUSE MAC Control frames transmitted on
+                 this Ethernet interface.
+
+                 Discontinuities in the values of counters in
+                 this container can occur at re-initialization of the
+                 management system, and at other times as indicated
+                 by the value of the 'discontinuity-time' leaf
+                 defined in the ietf-interfaces YANG module 
+                 (IETF RFC 8343).";
+              reference
+                "IEEE Std 802.3, 30.3.4.3 aPAUSEMACCtrlFramesReceived";
+            }
+            leaf out-frames-pause {
+              type oc-yang:counter64;
+              units frames;
+              description
+                "A count of PAUSE MAC Control frames transmitted on
+                 this Ethernet interface.
+
+                 Discontinuities in the values of counters in
+                 this container can occur at re-initialization of the
+                 management system, and at other times as indicated
+                 by the value of the 'discontinuity-time' leaf
+                 defined in the ietf-interfaces YANG module 
+                 (IETF RFC 8343).";
+              reference
+                "IEEE Std 802.3, 30.3.4.2
+                 aPAUSEMACCtrlFramesTransmitted";
+            }
+          }
+        }
+
+        container pfc {
+          description
+            "IEEE Std 802.3 Priority-based PAUSE frame based flow 
+             control.";
+          reference 
+            "IEEE Std 802.3, Annex 31D";
+
+          leaf enable {
+            type boolean;
+
+            description
+              "True indicates that IEEE Std 802.3 priority-based 
+               PAUSE frame based flow control is enabled, false 
+               indicates that IEEE Std 802.3 priority-based PAUSE 
+               frame based flow control is disabled.
+               For interfaces that have auto-negotiation, then
+               priority-based PAUSE frame based flow control is 
+               negotiated by default.
+               If explicitly configured, when auto-negotiated is
+               enabled, then the configuration will restrict the
+               priority PAUSE frame based flow control settings that 
+               can be negotiated.
+               The default value is implementation-dependent.";
+          }
+
+          container statistics {
+            config false;
+            description 
+              "This container collects all statistics for IEEE
+               Std 802.3 Ethernet interfaces.";
+
+            leaf in-frames-pfc {
+              type oc-yang:counter64;
+              units frames;
+              description
+                "A count of PFC MAC Control frames received on this
+                 Ethernet interface.
+
+                 Discontinuities in the values of counters in
+                 this container can occur at re-initialization of the
+                 management system, and at other times as indicated
+                 by the value of the 'discontinuity-time' leaf
+                 defined in the ietf-interfaces YANG module 
+		 (IETF RFC 8343).";
+              reference 
+                "IEEE Std 802.3.1, dot3HCInPFCFrames";
+            }
+
+            leaf out-frames-pfc {
+              type oc-yang:counter64;
+              units frames;
+              description
+                "A count of PFC MAC Control frames transmitted on
+                 this interface.
+
+                 Discontinuities in the values of counters in
+                 this container can occur at re-initialization of the
+                 management system, and at other times as indicated
+                 by the value of the 'discontinuity-time' leaf
+                 defined in the ietf-interfaces YANG module 
+		 (IETF RFC 8343).";
+              reference 
+                "IEEE Std 802.3.1, dot3HCInPFCFrames";
+            }
+          }
+        }
+
+        leaf force-flow-control {
+          type boolean;
+          default false;
+          description
+            "Explicitly forces the local PAUSE frame based flow control
+             settings regardless of what has been negotiated.
+
+             Since the auto-negotiation of flow-control settings
+             does not allow all sane combinations to be negotiated
+             (e.g., consider a device that is only capable of sending
+             PAUSE frames connected to a peer device that is only
+             capable of receiving and acting on PAUSE frames) and
+             failing to agree on the flow-control settings does not
+             cause the auto-negotiation to fail completely, then it is
+             sometimes useful to be able to explicitly enable
+             particular PAUSE frame based flow control settings on 
+             the local device regardless of what is being advertised 
+             or negotiated.";
+          reference
+            "IEEE Std 802.3, Table 28B-3";
+        }
+      }
+// *************************************************************************
   }
 
   grouping ethernet-interface-state-counters {
